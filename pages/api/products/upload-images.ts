@@ -2,8 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
 import formidable from 'formidable';
 import fs from 'fs';
-import FormData from 'form-data';
-import fetch from 'node-fetch';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 // Disable the default body parser
@@ -15,38 +14,11 @@ export const config = {
 
 const prisma = new PrismaClient();
 
-// ImgBB API configuration
-const IMGBB_API_KEY = '1bc43ebd0cb93474188f1d032f718b87';
-const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
-
-// Function to upload image to ImgBB
-const uploadToImgBB = async (filePath: string, fileName: string): Promise<string> => {
-  try {
-    const imageBuffer = fs.readFileSync(filePath);
-    const base64Image = imageBuffer.toString('base64');
-    
-    const formData = new FormData();
-    formData.append('key', IMGBB_API_KEY);
-    formData.append('image', base64Image);
-    formData.append('name', fileName);
-
-    const response = await fetch(IMGBB_UPLOAD_URL, {
-      method: 'POST',
-      body: formData,
-    });
-
-    const result = await response.json() as any;
-    
-    if (!result.success) {
-      throw new Error(result.error?.message || 'Failed to upload to ImgBB');
-    }
-
-    return result.data.url;
-  } catch (error) {
-    console.error('ImgBB upload error:', error);
-    throw new Error('Failed to upload to ImgBB');
-  }
-};
+// Ensure upload directory exists
+const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -55,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const form = formidable({
+      uploadDir,
       keepExtensions: true,
       maxFiles: 10,
       maxFileSize: 10 * 1024 * 1024, // 10MB
@@ -85,64 +58,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           const imageResults = [];
 
-          for (let i = 0; i < uploadedFiles.length; i++) {
-            const file = uploadedFiles[i];
-            
-            try {
-              // Generate a unique filename
-              const uniqueId = uuidv4();
-              const originalName = file.originalFilename || `image-${uniqueId}`;
-              
-              // Upload to ImgBB
-              const imgbbUrl = await uploadToImgBB(file.filepath, originalName);
-              
-              // Clean up temporary file
-              fs.unlinkSync(file.filepath);
+          for (const file of uploadedFiles) {
+            // Generate a unique filename
+            const uniqueId = uuidv4();
+            const fileExt = path.extname(file.originalFilename || '');
+            const newFilename = `${uniqueId}${fileExt}`;
+            const finalPath = path.join(uploadDir, newFilename);
 
-              // Handle a new product that doesn't have an ID yet
-              if (isNew === 'true') {
-                // For new products, we'll just return temporary IDs
-                imageResults.push({
-                  id: `temp_${uniqueId}`,
-                  url: imgbbUrl,
-                  isMain: isMain === 'true' && i === 0,
-                });
-              } else {
-                // For existing products, save to database
-                if (!productId) {
-                  throw new Error('Product ID is required for existing products');
-                }
-                
-                const image = await prisma.productImage.create({
-                  data: {
-                    url: imgbbUrl,
-                    productId: productId,
-                    isMain: isMain === 'true' && i === 0, // Only make the first image main if isMain is true
-                  },
-                });
+            // Move the file to the final location
+            fs.renameSync(file.filepath, finalPath);
 
-                imageResults.push({
-                  id: image.id,
-                  url: image.url,
-                  isMain: image.isMain,
-                });
-              }
-            } catch (uploadError) {
-              console.error('Error uploading file:', uploadError);
-              // Clean up temporary file if it still exists
-              try {
-                fs.unlinkSync(file.filepath);
-              } catch (cleanupError) {
-                // Ignore cleanup errors
-              }
-              // Continue with other files but log the error
-              continue;
+            // Create a URL-friendly path
+            const imageUrl = `/uploads/${newFilename}`;
+
+            // Handle a new product that doesn't have an ID yet
+            if (isNew === 'true') {
+              // For new products, we'll just return temporary IDs
+              imageResults.push({
+                id: `temp_${uniqueId}`,
+                url: imageUrl,
+                isMain: isMain === 'true' && imageResults.length === 0,
+              });
+            } else {
+              // For existing products, save to database
+              const image = await prisma.productImage.create({
+                data: {
+                  url: imageUrl,
+                  productId,
+                  isMain: isMain === 'true' && imageResults.length === 0, // Only make the first image main if isMain is true
+                },
+              });
+
+              imageResults.push({
+                id: image.id,
+                url: image.url,
+                isMain: image.isMain,
+              });
             }
-          }
-
-          if (imageResults.length === 0) {
-            res.status(500).json({ error: 'Failed to upload any images' });
-            return resolve(true);
           }
 
           res.status(200).json({ images: imageResults });
