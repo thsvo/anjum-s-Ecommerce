@@ -95,7 +95,7 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-sm">Total Revenue</p>
-                <p className="text-3xl font-bold">${stats.totalRevenue.toLocaleString()}</p>
+                <p className="text-3xl font-bold">৳{stats.totalRevenue.toLocaleString()}</p>
               </div>
               <div className="text-4xl opacity-80">💰</div>
             </div>
@@ -165,7 +165,7 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-sm text-gray-600">Order #{order.id}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-900">${order.total}</p>
+                    <p className="font-semibold text-gray-900">৳{order.total}</p>
                     <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                       order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
                       order.status === 'Shipped' ? 'bg-blue-100 text-blue-800' :

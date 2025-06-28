@@ -460,7 +460,7 @@ const AdminProducts: React.FC = () => {
                   <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                   <div className="flex justify-between items-center">
                     <span className="text-xl font-bold text-green-600">
-                      ${product.price.toFixed(2)}
+                      ৳{product.price.toFixed(2)}
                     </span>
                     <Badge variant={product.stock > 0 ? 'default' : 'destructive'}>
                       Stock: {product.stock}

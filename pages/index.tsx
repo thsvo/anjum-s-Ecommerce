@@ -6,6 +6,7 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TailwindTest from '../components/TailwindTest';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Product {
   id: string;
@@ -31,6 +32,7 @@ interface Category {
 }
 
 export default function Home() {
+  const { user } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -95,17 +97,13 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>ShopHub - Your Ultimate Shopping Destination</title>
+        <title>Anjum's - Your Ultimate Shopping Destination</title>
         <meta name="description" content="Millions of products, great deals, fast delivery - Shop everything you need at ShopHub" />
       </Head>
 
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        
-        {/* Tailwind CSS Test Component */}
-        {/* <TailwindTest /> */}
-        
-        {/* Hero Banner with Carousel */}
+      
+        {        /* Hero Component */}
         <section className="relative bg-gradient-to-r from-blue-900 via-purple-900 to-pink-900 text-white overflow-hidden">
           <div className="absolute inset-0 bg-black opacity-20"></div>
           <div className="relative container mx-auto px-4 py-20">
@@ -127,7 +125,7 @@ export default function Home() {
                   Get the best deals with fast shipping and secure payments.
                 </p>
                 
-                {/* Enhanced Search Bar */}
+              
                 <div className="bg-white rounded-2xl p-2 shadow-2xl max-w-2xl">
                   <div className="flex">
                     <select className="px-4 py-4 border-r border-gray-200 text-gray-700 bg-transparent rounded-l-xl focus:outline-none">
@@ -222,6 +220,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+
 
         {/* Enhanced Quick Links */}
         <section className="py-4 bg-gradient-to-r from-gray-100 to-gray-200 border-b border-gray-300">
@@ -347,8 +347,8 @@ export default function Home() {
                         <span className="text-gray-600 text-sm ml-2">({product.reviewCount || 0})</span>
                       </div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-2xl font-bold text-orange-600">${product.price}</span>
-                        <span className="text-gray-500 line-through text-sm">${(product.price * 1.2).toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-orange-600">৳{product.price}</span>
+                        <span className="text-gray-500 line-through text-sm">৳{(product.price * 1.2).toFixed(2)}</span>
                       </div>
                       <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
                         Add to Cart
@@ -620,8 +620,8 @@ export default function Home() {
                         <span className="text-gray-600 text-sm ml-2">({product.reviewCount || 0})</span>
                       </div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-2xl font-bold text-orange-600">${product.price}</span>
-                        <span className="text-gray-500 line-through text-sm">${(product.price * 1.4).toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-orange-600">৳{product.price}</span>
+                        <span className="text-gray-500 line-through text-sm">৳{(product.price * 1.4).toFixed(2)}</span>
                       </div>
                       <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
                         Add to Cart
@@ -697,7 +697,7 @@ export default function Home() {
                   <span className="text-3xl">🚚</span>
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-gray-900">Free Shipping</h3>
-                <p className="text-gray-600">Free delivery on orders over $50. Fast shipping worldwide with tracking.</p>
+                <p className="text-gray-600">Free delivery on orders over ৳50. Fast shipping worldwide with tracking.</p>
               </div>
               
               <div className="text-center group">

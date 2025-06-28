@@ -32,11 +32,17 @@ const AdminUsers: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: 'USER' | 'ADMIN';
+    password?: string;
+  }>({
     email: '',
     firstName: '',
     lastName: '',
-    role: 'USER' as 'USER' | 'ADMIN',
+    role: 'USER',
     password: ''
   });
 
@@ -219,7 +225,7 @@ const AdminUsers: React.FC = () => {
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <DollarSign className="w-4 h-4 text-gray-400" />
-                          <span>${user.totalSpent.toFixed(2)}</span>
+                          <span>৳{user.totalSpent.toFixed(2)}</span>
                         </div>
                       </TableCell>
                       <TableCell>

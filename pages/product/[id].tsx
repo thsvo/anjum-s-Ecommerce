@@ -30,6 +30,11 @@ interface Product {
   }>;
   averageRating: number;
   reviewCount: number;
+  images?: Array<{
+    id: string;
+    url: string;
+    isMain: boolean;
+  }>;
 }
 
 const ProductDetail: React.FC = () => {
@@ -52,6 +57,14 @@ const ProductDetail: React.FC = () => {
   const [isOrdering, setIsOrdering] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [buyingNow, setBuyingNow] = useState(false);
+  const [showPaymentCheckout, setShowPaymentCheckout] = useState(false);
+  const [paymentOrderData, setPaymentOrderData] = useState({
+    shippingAddress: '',
+    phoneNumber: '',
+    customerName: '',
+    customerEmail: ''
+  });
 
   useEffect(() => {
     if (id) {
@@ -70,6 +83,12 @@ const ProductDetail: React.FC = () => {
       
       const data = await response.json();
       setProduct(data);
+      
+      // Set the main image as selected by default
+      if (data.images && data.images.length > 0) {
+        const mainImageIndex = data.images.findIndex((img: any) => img.isMain);
+        setSelectedImage(mainImageIndex >= 0 ? mainImageIndex : 0);
+      }
     } catch (error) {
       console.error('Error fetching product:', error);
       setError('Failed to load product');
@@ -94,6 +113,107 @@ const ProductDetail: React.FC = () => {
 
   const handleBuyNow = () => {
     setShowCheckout(true);
+  };
+
+  const handleBuyNowWithPayment = () => {
+    setShowPaymentCheckout(true);
+  };
+
+  const handlePaymentOrder = async () => {
+    if (!product || !paymentOrderData.shippingAddress || !paymentOrderData.phoneNumber || !paymentOrderData.customerName) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setBuyingNow(true);
+    try {
+      // Prepare order data for direct purchase
+      const orderPayload = {
+        items: [{
+          productId: product.id,
+          quantity: quantity,
+          price: product.price
+        }],
+        total: product.price * quantity,
+        shippingAddress: JSON.stringify({
+          fullName: paymentOrderData.customerName,
+          phone: paymentOrderData.phoneNumber,
+          address: paymentOrderData.shippingAddress,
+          city: 'Customer City',
+          state: 'Customer State',
+          zipCode: '12345',
+          country: 'Bangladesh'
+        }),
+        paymentMethod: 'SSLCommerz',
+        customerInfo: {
+          name: paymentOrderData.customerName,
+          phone: paymentOrderData.phoneNumber,
+          email: paymentOrderData.customerEmail || 'customer@example.com'
+        },
+        isDirectOrder: true
+      };
+
+      // Create order first
+      const orderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.error || 'Failed to create order');
+      }
+
+      const orderData = await orderResponse.json();
+      const createdOrderId = orderData.order.id;
+
+      // Initialize SSLCommerz payment
+      const paymentResponse = await fetch('/api/payment/sslcommerz/init', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: createdOrderId,
+          amount: product.price * quantity,
+          customerInfo: {
+            name: paymentOrderData.customerName,
+            email: paymentOrderData.customerEmail || 'customer@example.com',
+            phone: paymentOrderData.phoneNumber
+          },
+          shippingAddress: {
+            fullName: paymentOrderData.customerName,
+            phone: paymentOrderData.phoneNumber,
+            address: paymentOrderData.shippingAddress,
+            city: 'Customer City',
+            state: 'Customer State',
+            zipCode: '12345',
+            country: 'Bangladesh'
+          }
+        })
+      });
+
+      if (paymentResponse.ok) {
+        const paymentData = await paymentResponse.json();
+        if (paymentData.success) {
+          // Redirect to SSLCommerz payment gateway
+          window.location.href = paymentData.paymentUrl;
+          return;
+        } else {
+          throw new Error('Failed to initialize payment: ' + paymentData.error);
+        }
+      } else {
+        throw new Error('Failed to initialize payment');
+      }
+    } catch (error) {
+      console.error('Error with buy now payment:', error);
+      alert(`Failed to process payment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setBuyingNow(false);
+    }
   };
 
   const handlePlaceOrder = async () => {
@@ -283,36 +403,45 @@ const ProductDetail: React.FC = () => {
           <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
             {/* Image gallery */}
             <div className="flex flex-col-reverse">
-              {/* Image selector */}
-              <div className="hidden mt-6 w-full max-w-2xl mx-auto sm:block lg:max-w-none">
-                <div className="grid grid-cols-4 gap-6">
-                  {[...Array(4)].map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedImage(idx)}
-                      className={`relative h-24 bg-white rounded-md flex items-center justify-center text-sm font-medium uppercase text-gray-900 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring focus:ring-offset-4 focus:ring-opacity-50 ${
-                        selectedImage === idx ? 'ring-2 ring-blue-500' : ''
-                      }`}
-                    >
-                      <span className="sr-only">Image {idx + 1}</span>
-                      <span className="absolute inset-0 rounded-md overflow-hidden">
-                        <Image
-                          src={product.image || '/placeholder-product.jpg'}
-                          alt={`${product.name} view ${idx + 1}`}
-                          fill
-                          className="w-full h-full object-center object-cover"
-                        />
-                      </span>
-                    </button>
-                  ))}
+              {/* Image selector - thumbnails */}
+              {product.images && product.images.length > 1 && (
+                <div className="hidden mt-6 w-full max-w-2xl mx-auto sm:block lg:max-w-none">
+                  <div className="grid grid-cols-4 gap-6">
+                    {product.images.map((image, idx) => (
+                      <button
+                        key={image.id}
+                        onClick={() => setSelectedImage(idx)}
+                        className={`relative h-24 bg-white rounded-md flex items-center justify-center text-sm font-medium uppercase text-gray-900 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring focus:ring-offset-4 focus:ring-opacity-50 ${
+                          selectedImage === idx ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                      >
+                        <span className="sr-only">Image {idx + 1}</span>
+                        <span className="absolute inset-0 rounded-md overflow-hidden">
+                          <Image
+                            src={image.url}
+                            alt={`${product.name} view ${idx + 1}`}
+                            fill
+                            className="w-full h-full object-center object-cover"
+                          />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Main image */}
               <div className="w-full aspect-w-1 aspect-h-1">
                 <div className="relative h-96 w-full sm:h-[500px] lg:h-[600px]">
                   <Image
-                    src={product.image || '/placeholder-product.jpg'}
+                    src={
+                      product.images && product.images.length > 0
+                        ? product.images[selectedImage]?.url || 
+                          product.images.find(img => img.isMain)?.url ||
+                          product.images[0]?.url ||
+                          product.image
+                        : product.image || '/placeholder-product.jpg'
+                    }
                     alt={product.name}
                     fill
                     className="w-full h-full object-center object-cover sm:rounded-lg"
@@ -328,7 +457,7 @@ const ProductDetail: React.FC = () => {
 
               <div className="mt-3">
                 <h2 className="sr-only">Product information</h2>
-                <p className="text-3xl tracking-tight text-gray-900">${product.price.toFixed(2)}</p>
+                <p className="text-3xl tracking-tight text-gray-900">৳{product.price.toFixed(2)}</p>
               </div>
 
               {/* Reviews */}
@@ -437,6 +566,30 @@ const ProductDetail: React.FC = () => {
 
                     <button
                       type="button"
+                      onClick={handleBuyNowWithPayment}
+                      disabled={buyingNow}
+                      className="w-full bg-blue-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      {buyingNow ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Processing Payment...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          Buy Now with Card Payment
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={handleBuyNow}
                       className="w-full bg-orange-500 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                     >
@@ -450,7 +603,7 @@ const ProductDetail: React.FC = () => {
                       <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-sm text-gray-700">Free delivery on orders over $50</span>
+                      <span className="text-sm text-gray-700">Free delivery on orders over ৳50</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -536,7 +689,12 @@ const ProductDetail: React.FC = () => {
                       <div className="bg-gray-50 rounded-lg p-4 mb-6">
                         <div className="flex items-center space-x-4">
                           <Image
-                            src={product.image || '/placeholder-product.jpg'}
+                            src={
+                              product.images?.find(img => img.isMain)?.url ||
+                              product.images?.[0]?.url ||
+                              product.image ||
+                              '/placeholder-product.jpg'
+                            }
                             alt={product.name}
                             width={60}
                             height={60}
@@ -546,7 +704,7 @@ const ProductDetail: React.FC = () => {
                             <h4 className="font-medium text-gray-900">{product.name}</h4>
                             <p className="text-sm text-gray-500">Quantity: {quantity}</p>
                             <p className="text-lg font-semibold text-gray-900">
-                              ${(product.price * quantity).toFixed(2)}
+                              ৳{(product.price * quantity).toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -617,7 +775,7 @@ const ProductDetail: React.FC = () => {
                             <div className="ml-3">
                               <h3 className="text-sm font-medium text-yellow-800">Cash on Delivery</h3>
                               <div className="mt-1 text-sm text-yellow-700">
-                                <p>You will pay ${(product.price * quantity).toFixed(2)} when the product is delivered.</p>
+                                <p>You will pay ৳{(product.price * quantity).toFixed(2)} when the product is delivered.</p>
                               </div>
                             </div>
                           </div>
@@ -638,6 +796,160 @@ const ProductDetail: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowCheckout(false)}
+                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Checkout Modal */}
+        {showPaymentCheckout && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowPaymentCheckout(false)} />
+
+              <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+              <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                  <div className="sm:flex sm:items-start">
+                    <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                        Complete Your Payment Order
+                      </h3>
+                      
+                      {/* Order Summary */}
+                      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                        <div className="flex items-center space-x-4">
+                          <Image
+                            src={
+                              product.images?.find(img => img.isMain)?.url ||
+                              product.images?.[0]?.url ||
+                              product.image ||
+                              '/placeholder-product.jpg'
+                            }
+                            alt={product.name}
+                            width={60}
+                            height={60}
+                            className="rounded object-cover"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{product.name}</h4>
+                            <p className="text-sm text-gray-500">Quantity: {quantity}</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ৳{(product.price * quantity).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Customer Details Form */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Full Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentOrderData.customerName}
+                            onChange={(e) => setPaymentOrderData({ ...paymentOrderData, customerName: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your full name"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Phone Number *
+                          </label>
+                          <input
+                            type="tel"
+                            value={paymentOrderData.phoneNumber}
+                            onChange={(e) => setPaymentOrderData({ ...paymentOrderData, phoneNumber: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your phone number"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email *
+                          </label>
+                          <input
+                            type="email"
+                            value={paymentOrderData.customerEmail}
+                            onChange={(e) => setPaymentOrderData({ ...paymentOrderData, customerEmail: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your email"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Delivery Address *
+                          </label>
+                          <textarea
+                            value={paymentOrderData.shippingAddress}
+                            onChange={(e) => setPaymentOrderData({ ...paymentOrderData, shippingAddress: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows={3}
+                            placeholder="Enter your complete delivery address"
+                            required
+                          />
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                          <div className="flex">
+                            <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" clipRule="evenodd" />
+                            </svg>
+                            <div className="ml-3">
+                              <h3 className="text-sm font-medium text-blue-800">Card Payment</h3>
+                              <div className="mt-1 text-sm text-blue-700">
+                                <p>You will be redirected to secure payment gateway to pay ৳{(product.price * quantity).toFixed(2)}.</p>
+                                <p className="mt-1">Supported: Visa, MasterCard, Mobile Banking</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                  <button
+                    type="button"
+                    onClick={handlePaymentOrder}
+                    disabled={buyingNow || !paymentOrderData.shippingAddress || !paymentOrderData.phoneNumber || !paymentOrderData.customerName || !paymentOrderData.customerEmail}
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {buyingNow ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        Proceed to Payment
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentCheckout(false)}
                     className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   >
                     Cancel

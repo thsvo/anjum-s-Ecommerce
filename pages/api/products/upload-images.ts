@@ -12,6 +12,8 @@ export const config = {
   },
 };
 
+
+
 const prisma = new PrismaClient();
 
 // Ensure upload directory exists
@@ -81,10 +83,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               });
             } else {
               // For existing products, save to database
-              const image = await prisma.productImage.create({
+              if (!productId) {
+                throw new Error('productId is required for existing products');
+              }
+              const image: any = await prisma.productImage.create({
                 data: {
                   url: imageUrl,
-                  productId,
+                  productId: productId,
                   isMain: isMain === 'true' && imageResults.length === 0, // Only make the first image main if isMain is true
                 },
               });

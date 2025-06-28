@@ -110,10 +110,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="text-2xl font-bold text-orange-600">
-                ${product.price}
+                ৳{product.price}
               </span>
               <span className="text-gray-500 line-through text-sm">
-                ${(product.price * 1.3).toFixed(2)}
+                ৳{(product.price * 1.3).toFixed(2)}
               </span>
             </div>
           </div>

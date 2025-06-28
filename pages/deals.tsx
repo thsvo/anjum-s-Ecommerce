@@ -194,9 +194,9 @@ export default function Deals() {
                     </div>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <span className="text-2xl font-bold text-red-600">${product.price}</span>
+                        <span className="text-2xl font-bold text-red-600">৳{product.price}</span>
                         <span className="text-gray-500 line-through text-sm ml-2">
-                          ${product.originalPrice || (product.price * 1.6).toFixed(2)}
+                          ৳{product.originalPrice || (product.price * 1.6).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -250,9 +250,9 @@ export default function Deals() {
                     </div>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <span className="text-2xl font-bold text-orange-600">${product.price}</span>
+                        <span className="text-2xl font-bold text-orange-600">৳{product.price}</span>
                         <span className="text-gray-500 line-through text-sm ml-2">
-                          ${product.originalPrice || (product.price * 1.4).toFixed(2)}
+                          ৳{product.originalPrice || (product.price * 1.4).toFixed(2)}
                         </span>
                       </div>
                     </div>

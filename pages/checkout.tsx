@@ -42,6 +42,7 @@ const CheckoutPage: React.FC = () => {
   const [placing, setPlacing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'sslcommerz'>('cod');
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: '',
@@ -112,26 +113,82 @@ const CheckoutPage: React.FC = () => {
     setPlacing(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          shippingAddress: JSON.stringify(shippingAddress),
-          paymentMethod: 'Cash on Delivery'
-        })
-      });
+      
+      if (paymentMethod === 'sslcommerz') {
+        // First create the order
+        const orderResponse = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            shippingAddress: JSON.stringify(shippingAddress),
+            paymentMethod: 'SSLCommerz'
+          })
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        setOrderId(data.order.id);
-        setOrderPlaced(true);
-        refreshCart();
+        if (orderResponse.ok) {
+          const orderData = await orderResponse.json();
+          const createdOrderId = orderData.order.id;
+          
+          // Initialize SSLCommerz payment
+          const paymentResponse = await fetch('/api/payment/sslcommerz/init', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderId: createdOrderId,
+              amount: calculateTotal(),
+              customerInfo: {
+                name: user?.firstName + ' ' + user?.lastName,
+                email: user?.email,
+                phone: shippingAddress.phone
+              },
+              shippingAddress: shippingAddress
+            })
+          });
+
+          if (paymentResponse.ok) {
+            const paymentData = await paymentResponse.json();
+            if (paymentData.success) {
+              // Redirect to SSLCommerz payment gateway
+              window.location.href = paymentData.paymentUrl;
+              return;
+            } else {
+              alert('Failed to initialize payment: ' + paymentData.error);
+            }
+          } else {
+            alert('Failed to initialize payment');
+          }
+        } else {
+          const error = await orderResponse.json();
+          alert(error.error || 'Failed to create order');
+        }
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to place order');
+        // Cash on Delivery
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            shippingAddress: JSON.stringify(shippingAddress),
+            paymentMethod: 'Cash on Delivery'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setOrderId(data.order.id);
+          setOrderPlaced(true);
+          refreshCart();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to place order');
+        }
       }
     } catch (error) {
       console.error('Failed to place order:', error);
@@ -292,27 +349,78 @@ const CheckoutPage: React.FC = () => {
                   Payment Method
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+              <CardContent className="space-y-4">
+                {/* SSLCommerz Payment */}
+                <div 
+                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                    paymentMethod === 'sslcommerz' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setPaymentMethod('sslcommerz')}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mr-3">
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center mr-3">
+                        💳
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Online Payment</p>
+                        <p className="text-sm text-gray-600">Pay securely with card, mobile banking, or net banking</p>
+                      </div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                      paymentMethod === 'sslcommerz' 
+                        ? 'bg-blue-600' 
+                        : 'border-2 border-gray-300'
+                    }`}>
+                      {paymentMethod === 'sslcommerz' && <CheckCircle className="w-4 h-4 text-white" />}
+                    </div>
+                  </div>
+                  {paymentMethod === 'sslcommerz' && (
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        Secured by SSLCommerz. Supports Visa, Mastercard, Mobile Banking (bKash, Rocket, Nagad), and Internet Banking.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cash on Delivery */}
+                <div 
+                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                    paymentMethod === 'cod' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setPaymentMethod('cod')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center mr-3">
                         💰
                       </div>
                       <div>
-                        <p className="font-semibold text-blue-900">Cash on Delivery</p>
-                        <p className="text-sm text-blue-700">Pay when your order arrives</p>
+                        <p className="font-semibold text-gray-900">Cash on Delivery</p>
+                        <p className="text-sm text-gray-600">Pay when your order arrives</p>
                       </div>
                     </div>
-                    <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                      <CheckCircle className="w-4 h-4 text-white" />
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                      paymentMethod === 'cod' 
+                        ? 'bg-blue-600' 
+                        : 'border-2 border-gray-300'
+                    }`}>
+                      {paymentMethod === 'cod' && <CheckCircle className="w-4 h-4 text-white" />}
                     </div>
                   </div>
+                  {paymentMethod === 'cod' && (
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        You'll pay in cash when your order is delivered to your doorstep. Please have the exact amount ready.
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 mt-3">
-                  You'll pay in cash when your order is delivered to your doorstep. 
-                  Please have the exact amount ready.
-                </p>
               </CardContent>
             </Card>
           </div>
@@ -345,7 +453,7 @@ const CheckoutPage: React.FC = () => {
                           <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                         </div>
                       </div>
-                      <p className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-medium">৳{(item.product.price * item.quantity).toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
@@ -353,7 +461,7 @@ const CheckoutPage: React.FC = () => {
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>৳{calculateTotal().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
@@ -361,7 +469,7 @@ const CheckoutPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between font-semibold text-lg border-t pt-2">
                     <span>Total</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>৳{calculateTotal().toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -371,7 +479,12 @@ const CheckoutPage: React.FC = () => {
                   className="w-full bg-blue-600 hover:bg-blue-700"
                   size="lg"
                 >
-                  {placing ? 'Placing Order...' : 'Place Order'}
+                  {placing 
+                    ? 'Processing...' 
+                    : paymentMethod === 'sslcommerz' 
+                      ? 'Proceed to Payment' 
+                      : 'Place Order'
+                  }
                 </Button>
 
                 <p className="text-xs text-gray-500 text-center">

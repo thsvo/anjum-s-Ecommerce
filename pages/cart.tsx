@@ -179,7 +179,7 @@ const CartPage: React.FC = () => {
                     {/* Product Details */}
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">{item.product.name}</h3>
-                      <p className="text-gray-600">${item.product.price.toFixed(2)}</p>
+                      <p className="text-gray-600">৳{item.product.price.toFixed(2)}</p>
                       <p className="text-sm text-gray-500">In stock: {item.product.stock}</p>
                     </div>
 
@@ -207,7 +207,7 @@ const CartPage: React.FC = () => {
                     {/* Item Total */}
                     <div className="text-right">
                       <p className="font-semibold text-gray-900">
-                        ${(item.product.price * item.quantity).toFixed(2)}
+                        ৳{(item.product.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
 
@@ -236,7 +236,7 @@ const CartPage: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span>Subtotal ({cartItems.length} items)</span>
-                  <span>${calculateTotal().toFixed(2)}</span>
+                  <span>৳{calculateTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
@@ -245,7 +245,7 @@ const CartPage: React.FC = () => {
                 <div className="border-t pt-4">
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>৳{calculateTotal().toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="bg-blue-50 p-3 rounded-lg">

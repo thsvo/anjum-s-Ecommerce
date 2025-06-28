@@ -333,8 +333,8 @@ export default function Home() {
                         <span className="text-gray-600 text-sm ml-2">({product.reviewCount || 0})</span>
                       </div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-2xl font-bold text-orange-600">${product.price}</span>
-                        <span className="text-gray-500 line-through text-sm">${(product.price * 1.2).toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-orange-600">৳{product.price}</span>
+                        <span className="text-gray-500 line-through text-sm">৳{(product.price * 1.2).toFixed(2)}</span>
                       </div>
                       <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
                         Add to Cart
@@ -597,8 +597,8 @@ export default function Home() {
                         <span className="text-gray-600 text-sm ml-2">({product.reviewCount || 0})</span>
                       </div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-2xl font-bold text-orange-600">${product.price}</span>
-                        <span className="text-gray-500 line-through text-sm">${(product.price * 1.4).toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-orange-600">৳{product.price}</span>
+                        <span className="text-gray-500 line-through text-sm">৳{(product.price * 1.4).toFixed(2)}</span>
                       </div>
                       <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
                         Add to Cart
@@ -674,7 +674,7 @@ export default function Home() {
                   <span className="text-3xl">🚚</span>
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-gray-900">Free Shipping</h3>
-                <p className="text-gray-600">Free delivery on orders over $50. Fast shipping worldwide with tracking.</p>
+                <p className="text-gray-600">Free delivery on orders over ৳50. Fast shipping worldwide with tracking.</p>
               </div>
               
               <div className="text-center group">

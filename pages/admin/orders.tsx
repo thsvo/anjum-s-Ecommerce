@@ -208,7 +208,7 @@ const AdminOrders: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${order.total.toFixed(2)}
+                        ৳{order.total.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
@@ -290,7 +290,7 @@ const AdminOrders: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900">Order Information</h4>
-                      <p className="text-sm text-gray-600">Total: ${selectedOrder.total.toFixed(2)}</p>
+                      <p className="text-sm text-gray-600">Total: ৳{selectedOrder.total.toFixed(2)}</p>
                       <p className="text-sm text-gray-600">Payment: {selectedOrder.paymentMethod}</p>
                       <p className="text-sm text-gray-600">
                         Date: {format(new Date(selectedOrder.createdAt), 'MMM dd, yyyy HH:mm')}
@@ -319,7 +319,7 @@ const AdminOrders: React.FC = () => {
                               <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
                             </div>
                           </div>
-                          <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                          <p className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                       ))}
                     </div>

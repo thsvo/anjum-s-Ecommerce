@@ -195,7 +195,7 @@ const OrdersPage: React.FC = () => {
                           {order.paymentStatus}
                         </Badge>
                       </div>
-                      <p className="font-semibold text-lg">${order.total.toFixed(2)}</p>
+                      <p className="font-semibold text-lg">৳{order.total.toFixed(2)}</p>
                     </div>
                   </div>
                 </CardHeader>
@@ -221,10 +221,10 @@ const OrdersPage: React.FC = () => {
                             <div className="flex-1">
                               <p className="font-medium">{item.product.name}</p>
                               <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                              <p className="text-sm text-gray-600">Price: ${item.price.toFixed(2)} each</p>
+                              <p className="text-sm text-gray-600">Price: ৳{item.price.toFixed(2)} each</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                              <p className="font-semibold">৳{(item.price * item.quantity).toFixed(2)}</p>
                             </div>
                           </div>
                         ))}
