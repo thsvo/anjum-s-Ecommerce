@@ -4,11 +4,12 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
-  const { cartItems } = useCart();
+  const { cartItems, cartCount, localCartCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const cartItemsCount =
-    cartItems?.reduce((total, item) => total + item.quantity, 0) || 0;
+  
+  // Use cartCount for logged-in users, localCartCount for guests
+  const cartItemsCount = user ? cartCount : localCartCount;
   const isAdmin = user?.role === "ADMIN";
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50">

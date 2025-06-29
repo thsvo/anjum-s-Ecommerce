@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     switch (req.method) {
       case 'GET':
-        const { page = 1, limit = 10, search, categoryId: queryCategoryId } = req.query;
+        const { page = 1, limit = 10, search, categoryId: queryCategoryId, sortBy } = req.query;
         
         const skip = (Number(page) - 1) * Number(limit);
         const take = Number(limit);
@@ -24,6 +24,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (queryCategoryId) {
           where.categoryId = queryCategoryId as string;
         }
+
+        // Handle sorting
+        let orderBy: any = { createdAt: 'desc' }; // default sort
+        
+        switch (sortBy) {
+          case 'price-low':
+            orderBy = { price: 'asc' };
+            break;
+          case 'price-high':
+            orderBy = { price: 'desc' };
+            break;
+          case 'name':
+            orderBy = { name: 'asc' };
+            break;
+          case 'featured':
+            orderBy = [{ featured: 'desc' }, { createdAt: 'desc' }];
+            break;
+          case 'newest':
+            orderBy = { createdAt: 'desc' };
+            break;
+          default:
+            orderBy = { createdAt: 'desc' };
+        }
         
         const [products, total] = await Promise.all([
           prisma.product.findMany({
@@ -39,19 +62,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               },
               images: true
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy
           }),
           prisma.product.count({ where })
         ]);
         
         // Calculate average rating for each product
-        const productsWithRating = products.map(product => ({
+        let productsWithRating = products.map(product => ({
           ...product,
           averageRating: product.reviews.length > 0 
             ? product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length
             : 0,
           reviewCount: product.reviews.length
         }));
+
+        // Handle rating sort (needs to be done after calculation)
+        if (sortBy === 'rating') {
+          productsWithRating.sort((a, b) => b.averageRating - a.averageRating);
+        }
         
         res.status(200).json({
           products: productsWithRating,

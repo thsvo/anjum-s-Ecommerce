@@ -103,10 +103,16 @@ const ProductDetail: React.FC = () => {
     setAddingToCart(true);
     try {
       await addToCart(product.id, quantity);
-      // Show success message
-      setTimeout(() => setAddingToCart(false), 1000);
+      // Show success message based on user login status
+      if (user) {
+        alert('Product added to cart successfully!');
+      } else {
+        alert('Product added to cart! Please login to checkout.');
+      }
     } catch (error) {
       console.error('Error adding to cart:', error);
+      alert('Failed to add product to cart');
+    } finally {
       setAddingToCart(false);
     }
   };
@@ -297,14 +303,13 @@ const ProductDetail: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+       
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading product...</p>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -312,7 +317,7 @@ const ProductDetail: React.FC = () => {
   if (error || !product) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+      
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-800 mb-4">Product Not Found</h1>
@@ -325,7 +330,6 @@ const ProductDetail: React.FC = () => {
             </button>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -337,7 +341,7 @@ const ProductDetail: React.FC = () => {
         <meta name="description" content={product.description} />
       </Head>
 
-      <Navbar />
+    
 
       <main className="flex-1">
         {orderSuccess && (
@@ -961,7 +965,6 @@ const ProductDetail: React.FC = () => {
         )}
       </main>
 
-      <Footer />
     </div>
   );
 };

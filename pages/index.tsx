@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TailwindTest from '../components/TailwindTest';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 interface Product {
   id: string;
@@ -33,12 +34,15 @@ interface Category {
 
 export default function Home() {
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const productsPerPage = 12;
 
   useEffect(() => {
@@ -47,12 +51,17 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
-      const [productsResponse, categoriesResponse, allProductsResponse] = await Promise.all([
+      const [productsResponse, categoriesResponse, allProductsResponse, trendingResponse] = await Promise.all([
         axios.get('/api/products?featured=true'),
         axios.get('/api/categories'),
         axios.get('/api/products', {
           params: {
             limit: 100 // Get a larger number to show pagination
+          }
+        }),
+        axios.get('/api/products/trending', {
+          params: {
+            limit: 4 // Get 4 trending products for the section
           }
         })
       ]);
@@ -60,6 +69,7 @@ export default function Home() {
       setFeaturedProducts(productsResponse.data.products || []);
       setCategories(categoriesResponse.data.categories || []);
       setAllProducts(allProductsResponse.data.products || []);
+      setTrendingProducts(trendingResponse.data.products || []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -70,6 +80,22 @@ export default function Home() {
   const handleSearch = () => {
     if (searchQuery.trim()) {
       window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+    }
+  };
+
+  const handleAddToCart = async (productId: string) => {
+    setAddingToCart(productId);
+    try {
+      await addToCart(productId, 1);
+      if (user) {
+        alert('Product added to cart successfully!');
+      } else {
+        alert('Product added to cart! Please login to checkout.');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to add product to cart');
+    } finally {
+      setAddingToCart(null);
     }
   };
 
@@ -266,31 +292,46 @@ export default function Home() {
               {categories.length > 0 ? categories.map((category) => (
                 <Link key={category.id} href={`/products?category=${category.id}`}>
                   <div className="group bg-gradient-to-br from-gray-50 to-white hover:from-orange-50 hover:to-red-50 p-6 rounded-2xl text-center transition-all duration-300 cursor-pointer border border-gray-100 hover:border-orange-200 hover:shadow-lg transform hover:-translate-y-1">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-400 to-purple-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="text-white text-2xl">📦</span>
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl overflow-hidden flex items-center justify-center group-hover:scale-110 transition-transform">
+                      {category.image ? (
+                        <Image
+                          src={category.image}
+                          alt={category.name}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover rounded-2xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 rounded-2xl flex items-center justify-center">
+                          <span className="text-white text-2xl">📦</span>
+                        </div>
+                      )}
                     </div>
                     <h3 className="font-semibold text-gray-800 text-sm group-hover:text-orange-600 transition-colors">{category.name}</h3>
                   </div>
                 </Link>
-              )) : [
-                { name: 'Electronics', icon: '📱', color: 'from-blue-400 to-blue-600' },
-                { name: 'Fashion', icon: '👕', color: 'from-pink-400 to-pink-600' },
-                { name: 'Home & Garden', icon: '🏠', color: 'from-green-400 to-green-600' },
-                { name: 'Sports', icon: '⚽', color: 'from-orange-400 to-orange-600' },
-                { name: 'Books', icon: '📚', color: 'from-purple-400 to-purple-600' },
-                { name: 'Beauty', icon: '💄', color: 'from-red-400 to-red-600' },
-                { name: 'Automotive', icon: '🚗', color: 'from-gray-400 to-gray-600' },
-                { name: 'Toys & Games', icon: '🎮', color: 'from-yellow-400 to-yellow-600' }
-              ].map((category, index) => (
-                <Link key={index} href={`/category/${category.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                  <div className="group bg-gradient-to-br from-gray-50 to-white hover:from-orange-50 hover:to-red-50 p-6 rounded-2xl text-center transition-all duration-300 cursor-pointer border border-gray-100 hover:border-orange-200 hover:shadow-lg transform hover:-translate-y-1">
-                    <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${category.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                      <span className="text-white text-2xl">{category.icon}</span>
+              )) : (
+                // Fallback categories if none exist
+                [
+                  { name: 'Electronics', icon: '📱', color: 'from-blue-400 to-blue-600' },
+                  { name: 'Fashion', icon: '👕', color: 'from-pink-400 to-pink-600' },
+                  { name: 'Home & Garden', icon: '🏠', color: 'from-green-400 to-green-600' },
+                  { name: 'Sports', icon: '⚽', color: 'from-orange-400 to-orange-600' },
+                  { name: 'Books', icon: '📚', color: 'from-purple-400 to-purple-600' },
+                  { name: 'Beauty', icon: '💄', color: 'from-red-400 to-red-600' },
+                  { name: 'Automotive', icon: '🚗', color: 'from-gray-400 to-gray-600' },
+                  { name: 'Toys & Games', icon: '🎮', color: 'from-yellow-400 to-yellow-600' }
+                ].map((category, index) => (
+                  <Link key={index} href={`/category/${category.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <div className="group bg-gradient-to-br from-gray-50 to-white hover:from-orange-50 hover:to-red-50 p-6 rounded-2xl text-center transition-all duration-300 cursor-pointer border border-gray-100 hover:border-orange-200 hover:shadow-lg transform hover:-translate-y-1">
+                      <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${category.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <span className="text-white text-2xl">{category.icon}</span>
+                      </div>
+                      <h3 className="font-semibold text-gray-800 text-sm group-hover:text-orange-600 transition-colors">{category.name}</h3>
                     </div>
-                    <h3 className="font-semibold text-gray-800 text-sm group-hover:text-orange-600 transition-colors">{category.name}</h3>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))
+              )}
             </div>
           </div>
         </section>
@@ -350,9 +391,25 @@ export default function Home() {
                         <span className="text-2xl font-bold text-orange-600">৳{product.price}</span>
                         <span className="text-gray-500 line-through text-sm">৳{(product.price * 1.2).toFixed(2)}</span>
                       </div>
-                      <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
-                        Add to Cart
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAddToCart(product.id);
+                          }}
+                          disabled={addingToCart === product.id}
+                          className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                          {addingToCart === product.id ? 'Adding...' : 'Add to Cart'}
+                        </button>
+                        <Link 
+                          href={`/product/${product.id}`}
+                          className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold text-center transition-all"
+                        >
+                          View Details
+                        </Link>
+                      </div>
                     </div>
                   </Link>
                 </div>
@@ -399,9 +456,30 @@ export default function Home() {
                           {i % 2 === 0 && <span className="text-gray-500 line-through text-sm ml-2">${29.99 + i * 5}</span>}
                         </div>
                       </div>
-                      <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
-                        Add to Cart
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Sample product demonstration - show alert
+                            alert(`This is a demo product. In a real store, this would add Product ${i + 1} to your cart.`);
+                          }}
+                          className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105"
+                        >
+                          Add to Cart
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // View details functionality for sample products
+                            alert(`Sample Product ${i + 1} details would be shown here`);
+                          }}
+                          className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -500,44 +578,121 @@ export default function Home() {
         <section className="py-16 bg-gradient-to-br from-gray-50 to-gray-100">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4 text-gray-900">🔥 Trending Now</h2>
-              <p className="text-gray-600 text-lg">Most popular products this week</p>
+              <h2 className="text-4xl font-bold mb-4 text-gray-900">🔥 Trending Categories</h2>
+              <p className="text-gray-600 text-lg">Hot products from the most popular categories this week</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {Array.from({ length: 4 }, (_, i) => (
-                <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group">
+              {trendingProducts.length > 0 ? trendingProducts.map((product) => (
+                <div key={product.id} className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group">
                   <div className="relative">
                     <img
-                      src={`https://via.placeholder.com/300x200?text=Trending+${i + 1}`}
-                      alt={`Trending Product ${i + 1}`}
+                      src={product.images && product.images.length > 0 
+                        ? product.images.find(img => img.isMain)?.url || product.images[0].url 
+                        : product.image || `https://via.placeholder.com/300x200?text=${encodeURIComponent(product.name)}`
+                      }
+                      alt={product.name}
                       className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
                     />
-                    <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                      🔥 Hot
+                    <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                      🔥 Trending
                     </div>
-                    <div className="absolute top-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                      -{20 + i * 10}%
+                    <div className="absolute top-3 right-3 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                      {product.category.name}
                     </div>
+                    {product.averageRating >= 4.5 && (
+                      <div className="absolute bottom-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                        ⭐ Top Rated
+                      </div>
+                    )}
                   </div>
                   <div className="p-6">
-                    <h3 className="font-bold text-lg text-gray-900 mb-2">Trending Product {i + 1}</h3>
+                    <div className="mb-2">
+                      <span className="text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
+                        {product.category.name}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
                     <div className="flex items-center mb-3">
-                      <div className="flex text-yellow-400 text-sm">★★★★★</div>
-                      <span className="text-gray-600 text-sm ml-2">(1.2k reviews)</span>
+                      <div className="flex text-yellow-400 text-sm">
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <span key={i}>
+                            {i < Math.floor(product.averageRating) ? '★' : '☆'}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-gray-600 text-sm ml-2">
+                        ({product.reviewCount > 0 ? `${product.reviewCount} reviews` : 'No reviews'})
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-2xl font-bold text-orange-600">${49 + i * 20}</span>
-                        <span className="text-gray-500 line-through text-sm ml-2">${69 + i * 20}</span>
+                        <span className="text-2xl font-bold text-orange-600">
+                          ${product.price.toFixed(2)}
+                        </span>
                       </div>
-                      <button className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all transform hover:scale-105">
-                        Buy Now
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAddToCart(product.id);
+                          }}
+                          disabled={addingToCart === product.id}
+                          className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:from-orange-600 hover:to-red-700 transition-all transform hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                          {addingToCart === product.id ? 'Adding...' : 'Add to Cart'}
+                        </button>
+                        <button 
+                          onClick={() => window.location.href = `/product/${product.id}`}
+                          className="bg-gray-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-all transform hover:scale-105 text-sm"
+                        >
+                          View
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                // Fallback when no trending category products are available
+                Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group">
+                    <div className="relative">
+                      <img
+                        src={`https://via.placeholder.com/300x200?text=Trending+Categories`}
+                        alt={`Trending Category ${i + 1}`}
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute top-3 left-3 bg-gradient-to-r from-gray-400 to-gray-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                        Coming Soon
+                      </div>
+                      <div className="absolute top-3 right-3 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                        Category
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="mb-2">
+                        <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                          Sample Category
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-2">Trending Categories Coming Soon</h3>
+                      <div className="flex items-center mb-3">
+                        <div className="flex text-gray-300 text-sm">☆☆☆☆☆</div>
+                        <span className="text-gray-600 text-sm ml-2">(No reviews yet)</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-2xl font-bold text-gray-400">$--</span>
+                        </div>
+                        <button className="bg-gray-400 text-white px-3 py-2 rounded-lg font-semibold text-sm cursor-not-allowed">
+                          Coming Soon
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </section>
@@ -623,9 +778,25 @@ export default function Home() {
                         <span className="text-2xl font-bold text-orange-600">৳{product.price}</span>
                         <span className="text-gray-500 line-through text-sm">৳{(product.price * 1.4).toFixed(2)}</span>
                       </div>
-                      <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
-                        Add to Cart
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAddToCart(product.id);
+                          }}
+                          disabled={addingToCart === product.id}
+                          className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                          {addingToCart === product.id ? 'Adding...' : 'Add to Cart'}
+                        </button>
+                        <Link 
+                          href={`/product/${product.id}`}
+                          className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold text-center transition-all"
+                        >
+                          View Details
+                        </Link>
+                      </div>
                     </div>
                   </Link>
                 </div>
@@ -672,9 +843,30 @@ export default function Home() {
                           {i < 3 && <span className="text-gray-500 line-through text-sm ml-2">${39 + i * 10}</span>}
                         </div>
                       </div>
-                      <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105">
-                        Add to Cart
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Sample product demonstration - show alert
+                            alert(`This is a demo premium product. In a real store, this would add Premium Product ${i + 1} to your cart.`);
+                          }}
+                          className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-all transform hover:scale-105"
+                        >
+                          Add to Cart
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // View details functionality for sample products
+                            alert(`Premium Product ${i + 1} details would be shown here`);
+                          }}
+                          className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -802,7 +994,7 @@ export default function Home() {
           </div>
         </section>
         
-        <Footer />
+    
       </div>
     </>
   );

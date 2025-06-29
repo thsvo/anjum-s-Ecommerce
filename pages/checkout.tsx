@@ -35,7 +35,7 @@ interface ShippingAddress {
 
 const CheckoutPage: React.FC = () => {
   const { user } = useAuth();
-  const { refreshCart } = useCart();
+  const cartContext = useCart();
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,7 +184,6 @@ const CheckoutPage: React.FC = () => {
           const data = await response.json();
           setOrderId(data.order.id);
           setOrderPlaced(true);
-          refreshCart();
         } else {
           const error = await response.json();
           alert(error.error || 'Failed to place order');
@@ -201,13 +200,13 @@ const CheckoutPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+     
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         </div>
-        <Footer />
+
       </div>
     );
   }
@@ -215,7 +214,7 @@ const CheckoutPage: React.FC = () => {
   if (orderPlaced) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+    
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-2xl mx-auto text-center">
             <CardContent className="p-8">
@@ -254,14 +253,14 @@ const CheckoutPage: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-        <Footer />
+   
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
         
@@ -495,7 +494,7 @@ const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </div>
-      <Footer />
+  
     </div>
   );
 };

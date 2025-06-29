@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               id: true,
               name: true,
               price: true,
-              imageUrl: true,
+              image: true,
               stock: true
             }
           }
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: true,
                 name: true,
                 price: true,
-                imageUrl: true,
+                image: true,
                 stock: true
               }
             }
@@ -110,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: true,
                 name: true,
                 price: true,
-                imageUrl: true,
+                image: true,
                 stock: true
               }
             }
@@ -130,9 +130,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader('Allow', ['GET', 'POST', 'DELETE']);
       res.status(405).json({ error: 'Method not allowed' });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Cart operation error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+    });
   }
 }
 

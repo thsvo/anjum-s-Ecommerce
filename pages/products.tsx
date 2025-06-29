@@ -2,125 +2,127 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ProductCard from '../components/ProductCard';
 
 interface Product {
   id: string;
   name: string;
+  description?: string;
   price: number;
   image: string;
+  images?: Array<{ url: string; isMain: boolean }>;
   category: {
+    id: string;
     name: string;
   };
   averageRating: number;
   reviewCount: number;
+  stock: number;
+  featured: boolean;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  image?: string;
+  productCount: number;
+}
+
+interface Pagination {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 const Products: React.FC = () => {
   const { user } = useAuth();
   const { addToCart, fetchCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('featured');
   const [filterCategory, setFilterCategory] = useState('all');
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<Pagination>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    hasNext: false,
+    hasPrev: false
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const itemsPerPage = 12;
 
-  // Sample products for demonstration
-  const sampleProducts: Product[] = [
-    {
-      id: '1',
-      name: 'iPhone 15 Pro Max',
-      price: 1199,
-      image: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&h=300&fit=crop',
-      category: { name: 'Electronics' },
-      averageRating: 4.8,
-      reviewCount: 2847
-    },
-    {
-      id: '2',
-      name: 'Samsung Galaxy S24 Ultra',
-      price: 1099,
-      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop',
-      category: { name: 'Electronics' },
-      averageRating: 4.7,
-      reviewCount: 1923
-    },
-    {
-      id: '3',
-      name: 'Nike Air Jordan 1',
-      price: 169,
-      image: 'https://images.unsplash.com/photo-1584735175315-9d5df23860e6?w=400&h=300&fit=crop',
-      category: { name: 'Fashion' },
-      averageRating: 4.5,
-      reviewCount: 654
-    },
-    {
-      id: '4',
-      name: 'MacBook Pro 16"',
-      price: 2399,
-      image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=300&fit=crop',
-      category: { name: 'Electronics' },
-      averageRating: 4.9,
-      reviewCount: 1456
-    },
-    {
-      id: '5',
-      name: 'Adidas Ultraboost 22',
-      price: 189,
-      image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
-      category: { name: 'Sports' },
-      averageRating: 4.6,
-      reviewCount: 892
-    },
-    {
-      id: '6',
-      name: 'Sony WH-1000XM5',
-      price: 399,
-      image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=300&fit=crop',
-      category: { name: 'Electronics' },
-      averageRating: 4.8,
-      reviewCount: 2341
-    },
-    {
-      id: '7',
-      name: 'Levi\'s 501 Original Jeans',
-      price: 89,
-      image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=300&fit=crop',
-      category: { name: 'Fashion' },
-      averageRating: 4.4,
-      reviewCount: 567
-    },
-    {
-      id: '8',
-      name: 'Apple Watch Series 9',
-      price: 429,
-      image: 'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=400&h=300&fit=crop',
-      category: { name: 'Electronics' },
-      averageRating: 4.7,
-      reviewCount: 1834
+  // Fetch products from API
+  const fetchProducts = async (page = 1, categoryId = '', search = '', sort = '') => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString(),
+      });
+      
+      if (categoryId && categoryId !== 'all') {
+        params.append('categoryId', categoryId);
+      }
+      
+      if (search) {
+        params.append('search', search);
+      }
+
+      if (sort && sort !== 'featured') {
+        params.append('sortBy', sort);
+      }
+
+      const response = await fetch(`/api/products?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      
+      const data = await response.json();
+      setProducts(data.products);
+      setPagination(data.pagination);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      alert('Failed to load products');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories?limit=100');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      
+      const data = await response.json();
+      setCategories(data.categories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setProducts(sampleProducts);
-      setLoading(false);
-    }, 1000);
+    fetchCategories();
+    fetchProducts(1, filterCategory, searchTerm, sortBy);
   }, []);
 
-  const handleAddToCart = async (productId: string) => {
-    if (!user) {
-      alert('Please login to add items to cart');
-      return;
-    }
+  useEffect(() => {
+    fetchProducts(1, filterCategory, searchTerm, sortBy);
+  }, [filterCategory, searchTerm, sortBy]);
 
+  const handleAddToCart = async (productId: string) => {
     setAddingToCart(productId);
     try {
       await addToCart(productId, 1);
-      alert('Product added to cart successfully!');
+      if (user) {
+        alert('Product added to cart successfully!');
+      } else {
+        alert('Product added to cart! Please login to checkout.');
+      }
     } catch (error: any) {
       alert(error.message || 'Failed to add product to cart');
     } finally {
@@ -133,29 +135,28 @@ const Products: React.FC = () => {
     // Implement add to wishlist logic
   };
 
-  const filteredProducts = products.filter(product => 
-    filterCategory === 'all' || product.category.name.toLowerCase() === filterCategory
-  );
+  const handlePageChange = (newPage: number) => {
+    fetchProducts(newPage, filterCategory, searchTerm, sortBy);
+  };
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case 'price-low':
-        return a.price - b.price;
-      case 'price-high':
-        return b.price - a.price;
-      case 'rating':
-        return b.averageRating - a.averageRating;
-      case 'name':
-        return a.name.localeCompare(b.name);
-      default:
-        return 0;
-    }
-  });
+  const handleCategoryChange = (categoryId: string) => {
+    setFilterCategory(categoryId);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchProducts(1, filterCategory, searchTerm, sortBy);
+  };
+
+  const handleSortChange = (sortValue: string) => {
+    setSortBy(sortValue);
+    // The useEffect will trigger fetchProducts with the new sort value
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+    
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-600"></div>
         </div>
@@ -171,7 +172,7 @@ const Products: React.FC = () => {
       </Head>
 
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+   
         
         {/* Hero Section */}
         <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-12">
@@ -181,22 +182,45 @@ const Products: React.FC = () => {
           </div>
         </section>
 
-        {/* Filters and Sort */}
+        {/* Search and Filters */}
         <section className="py-6 bg-white border-b">
           <div className="container mx-auto px-4">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <form onSubmit={handleSearch} className="flex gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  Search
+                </button>
+              </form>
+            </div>
+
+            {/* Filters and Sort */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
               <div className="flex items-center space-x-4">
                 <span className="font-medium text-gray-700">Filter by:</span>
                 <select
                   value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="all">All Categories</option>
-                  <option value="electronics">Electronics</option>
-                  <option value="fashion">Fashion</option>
-                  <option value="sports">Sports</option>
-                  <option value="home">Home & Garden</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name} ({category.productCount})
+                    </option>
+                  ))}
                 </select>
               </div>
               
@@ -204,7 +228,7 @@ const Products: React.FC = () => {
                 <span className="font-medium text-gray-700">Sort by:</span>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => handleSortChange(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="featured">Featured</option>
@@ -212,8 +236,14 @@ const Products: React.FC = () => {
                   <option value="price-high">Price: High to Low</option>
                   <option value="rating">Highest Rated</option>
                   <option value="name">Name A-Z</option>
+                  <option value="newest">Newest First</option>
                 </select>
               </div>
+            </div>
+
+            {/* Results count */}
+            <div className="mt-4 text-sm text-gray-600">
+              Showing {((pagination.currentPage - 1) * itemsPerPage) + 1} - {Math.min(pagination.currentPage * itemsPerPage, pagination.totalItems)} of {pagination.totalItems} products
             </div>
           </div>
         </section>
@@ -222,10 +252,15 @@ const Products: React.FC = () => {
         <section className="py-12">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {sortedProducts.map((product) => (
+              {products.map((product: Product) => (
                 <ProductCard
                   key={product.id}
-                  product={product}
+                  product={{
+                    ...product,
+                    image: product.images && product.images.length > 0 
+                      ? product.images.find(img => img.isMain)?.url || product.images[0].url || product.image
+                      : product.image
+                  }}
                   onAddToCart={handleAddToCart}
                   onAddToWishlist={handleAddToWishlist}
                   isAddingToCart={addingToCart === product.id}
@@ -233,17 +268,76 @@ const Products: React.FC = () => {
               ))}
             </div>
 
-            {sortedProducts.length === 0 && (
+            {products.length === 0 && !loading && (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🔍</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
                 <p className="text-gray-600">Try adjusting your filters or search terms.</p>
               </div>
             )}
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="mt-12 flex justify-center items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrev}
+                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex space-x-1">
+                  {[...Array(pagination.totalPages)].map((_, index) => {
+                    const pageNumber = index + 1;
+                    const isCurrentPage = pageNumber === pagination.currentPage;
+                    
+                    // Show first page, last page, current page, and 2 pages around current
+                    if (
+                      pageNumber === 1 ||
+                      pageNumber === pagination.totalPages ||
+                      (pageNumber >= pagination.currentPage - 2 && pageNumber <= pagination.currentPage + 2)
+                    ) {
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => handlePageChange(pageNumber)}
+                          className={`px-3 py-2 rounded-lg ${
+                            isCurrentPage
+                              ? 'bg-orange-600 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    }
+                    
+                    // Show ellipsis
+                    if (
+                      pageNumber === pagination.currentPage - 3 ||
+                      pageNumber === pagination.currentPage + 3
+                    ) {
+                      return <span key={pageNumber} className="px-2">...</span>;
+                    }
+                    
+                    return null;
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNext}
+                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
-        <Footer />
+    
       </div>
     </>
   );

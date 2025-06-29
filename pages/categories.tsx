@@ -149,7 +149,7 @@ export default function Categories() {
       </Head>
 
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        
         
         {/* Header */}
         <section className="bg-gradient-to-r from-blue-900 to-purple-900 text-white py-16">
@@ -238,7 +238,7 @@ export default function Categories() {
           </div>
         </section>
 
-        <Footer />
+
       </div>
     </>
   );

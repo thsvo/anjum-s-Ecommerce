@@ -76,12 +76,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dash
             ))}
           </nav>
 
-          <div className="absolute bottom-4 left-4 right-4">
+          {/* <div className="absolute bottom-4 left-4 right-4">
             <Link href="/" className="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors rounded">
               <span className="text-2xl">🌐</span>
               {sidebarOpen && <span className="ml-3">Visit Store</span>}
             </Link>
-          </div>
+          </div> */}
         </div>
 
         {/* Main Content */}

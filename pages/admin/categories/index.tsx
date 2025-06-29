@@ -27,6 +27,8 @@ const AdminCategories: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -59,10 +61,24 @@ const AdminCategories: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const submitData = new FormData();
+      submitData.append('name', formData.name);
+      submitData.append('description', formData.description);
+      
+      if (imageFile) {
+        submitData.append('image', imageFile);
+      } else if (formData.image) {
+        submitData.append('image', formData.image);
+      }
+
       if (editingCategory) {
-        await axios.put(`/api/categories/${editingCategory.id}`, formData);
+        await axios.put(`/api/categories/${editingCategory.id}`, submitData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
       } else {
-        await axios.post('/api/categories', formData);
+        await axios.post('/api/categories', submitData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
       }
       fetchCategories();
       resetForm();
@@ -91,6 +107,8 @@ const AdminCategories: React.FC = () => {
       description: category.description || '',
       image: category.image || ''
     });
+    setImageFile(null);
+    setImagePreview(category.image || '');
     setIsDialogOpen(true);
   };
 
@@ -101,6 +119,20 @@ const AdminCategories: React.FC = () => {
       image: ''
     });
     setEditingCategory(null);
+    setImageFile(null);
+    setImagePreview('');
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   if (loading) {
@@ -271,13 +303,31 @@ const AdminCategories: React.FC = () => {
             </div>
 
             <div>
-              <Label htmlFor="image">Image URL</Label>
-              <Input
-                id="image"
-                value={formData.image}
-                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                placeholder="https://example.com/category-image.jpg"
-              />
+              <Label htmlFor="image">Category Image</Label>
+              <div className="space-y-4">
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="cursor-pointer"
+                />
+                {imagePreview && (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-600 mb-2">Image Preview:</p>
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+                    />
+                  </div>
+                )}
+                {!imagePreview && !imageFile && (
+                  <div className="w-32 h-32 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                    <span className="text-gray-400 text-sm">No image</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end space-x-2">

@@ -124,13 +124,13 @@ const OrdersPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+      
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         </div>
-        <Footer />
+  
       </div>
     );
   }
@@ -138,7 +138,7 @@ const OrdersPage: React.FC = () => {
   if (orders.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+    
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-2xl mx-auto text-center">
             <CardContent className="p-8">
@@ -151,14 +151,14 @@ const OrdersPage: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-        <Footer />
+     
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+     
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
@@ -286,7 +286,7 @@ const OrdersPage: React.FC = () => {
           })}
         </div>
       </div>
-      <Footer />
+  
     </div>
   );
 };

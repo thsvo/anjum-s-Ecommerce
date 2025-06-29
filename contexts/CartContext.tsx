@@ -18,6 +18,11 @@ interface CartItem {
   };
 }
 
+interface LocalCartItem {
+  productId: string;
+  quantity: number;
+}
+
 interface CartContextType {
   cartItems: CartItem[];
   cartCount: number;
@@ -28,6 +33,8 @@ interface CartContextType {
   clearCart: () => Promise<void>;
   fetchCart: () => Promise<void>;
   loading: boolean;
+  localCartCount: number;
+  addToLocalCart: (productId: string, quantity?: number) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -47,11 +54,32 @@ interface CartProviderProps {
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [localCartItems, setLocalCartItems] = useState<LocalCartItem[]>([]);
   const { user, token } = useAuth();
+
+  // Load local cart from localStorage on mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem('guestCart');
+    if (savedCart) {
+      try {
+        setLocalCartItems(JSON.parse(savedCart));
+      } catch (error) {
+        console.error('Failed to parse local cart:', error);
+        localStorage.removeItem('guestCart');
+      }
+    }
+  }, []);
+
+  // Save local cart to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('guestCart', JSON.stringify(localCartItems));
+  }, [localCartItems]);
 
   useEffect(() => {
     if (user && token) {
       fetchCart();
+      // Merge local cart with server cart when user logs in
+      mergeLocalCartWithServer();
     } else {
       setCartItems([]);
     }
@@ -73,9 +101,59 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
+  // Merge local cart with server cart when user logs in
+  const mergeLocalCartWithServer = async () => {
+    if (!token || localCartItems.length === 0) return;
+
+    try {
+      setLoading(true);
+      // Add all local cart items to server
+      for (const localItem of localCartItems) {
+        await axios.post('/api/cart', {
+          productId: localItem.productId,
+          quantity: localItem.quantity
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      // Clear local cart after successful merge
+      setLocalCartItems([]);
+      localStorage.removeItem('guestCart');
+      // Refresh server cart
+      await fetchCart();
+    } catch (error) {
+      console.error('Failed to merge local cart with server:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add item to local cart (for guest users)
+  const addToLocalCart = (productId: string, quantity: number = 1) => {
+    setLocalCartItems(prevItems => {
+      const existingItem = prevItems.find(item => item.productId === productId);
+      let updatedItems;
+      if (existingItem) {
+        updatedItems = prevItems.map(item =>
+          item.productId === productId
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      } else {
+        updatedItems = [...prevItems, { productId, quantity }];
+      }
+      
+      // Save to localStorage immediately
+      localStorage.setItem('guestCart', JSON.stringify(updatedItems));
+      return updatedItems;
+    });
+  };
+
   const addToCart = async (productId: string, quantity: number = 1) => {
+    // If user is not logged in, add to local cart
     if (!token) {
-      throw new Error('Please login to add items to cart');
+      addToLocalCart(productId, quantity);
+      return;
     }
 
     try {
@@ -143,6 +221,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   };
 
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const localCartCount = localCartItems.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = cartItems.reduce((total, item) => total + (item.product.price * item.quantity), 0);
 
   const value = {
@@ -154,7 +233,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     removeFromCart,
     clearCart,
     fetchCart,
-    loading
+    loading,
+    localCartCount,
+    addToLocalCart
   };
 
   return (

@@ -87,7 +87,7 @@ export default function Deals() {
       </Head>
 
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        
         
         {/* Hero Section */}
         <section className="bg-gradient-to-r from-red-600 via-pink-600 to-purple-700 text-white py-20 relative overflow-hidden">
@@ -295,7 +295,7 @@ export default function Deals() {
           </div>
         </section>
 
-        <Footer />
+    
       </div>
     </>
   );
