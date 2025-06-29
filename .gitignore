@@ -24,10 +24,27 @@ tmp/
 .env
 .env.*.local
 .env.local
+.env.production.local
 
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Vercel
+.vercel
+
+# Database
+*.db
+*.sqlite
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Generated files
+prisma/generated/
 
 # IDEs and editors
 .vscode/
